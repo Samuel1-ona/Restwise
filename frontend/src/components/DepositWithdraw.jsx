@@ -78,6 +78,10 @@ export default function DepositWithdraw({ vault }) {
         burnShares = await client.readContract({
           address: VAULT_ADDRESS, abi: VAULT_ABI, functionName: "convertToShares", args: [normAmount],
         });
+        // Cap at the wallet's share balance: a share is worth slightly under $1 after
+        // swap costs, so "withdraw $1.00" on a $0.999 position would otherwise revert
+        // with ERC20InsufficientBalance on the burn.
+        if (shares != null && burnShares > shares) burnShares = shares;
       }
       if (burnShares === 0n) throw new Error("nothing to withdraw");
       setStatus(`Withdrawing in ${withdrawAsset}…`);
