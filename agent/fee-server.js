@@ -23,11 +23,16 @@ const feeCollector = new ethers.Wallet(process.env.FEE_COLLECTOR_PRIVATE_KEY, pr
 const vault = new ethers.Contract(config.vaultAddress, VAULT_ABI, feeCollector);
 const TREASURY = process.env.TREASURY_ADDRESS ?? feeCollector.address; // receives the x402 payment
 
-// Payment asset must support EIP-3009 for the "exact" scheme; on Celo that is USDC.
-const PAY_ASSET = { address: TOKENS.USDC.address, decimals: 6, eip712: { name: "USDC", version: "2" } };
+// Payment assets must support EIP-3009 for the "exact" scheme. On Celo both USDT
+// and USDC do (domains verified against the on-chain DOMAIN_SEPARATORs). USDT is
+// listed first because the agent wallet holds it.
+const PAY_ASSETS = [
+  { address: TOKENS.USDT.address, decimals: 6, eip712: { name: "Tether USD", version: "1" } },
+  { address: TOKENS.USDC.address, decimals: 6, eip712: { name: "USDC", version: "2" } },
+];
 
 function paymentRequirements(amountUnits, resourceUrl) {
-  return {
+  return PAY_ASSETS.map((asset) => ({
     scheme: "exact",
     network: "celo",
     maxAmountRequired: String(amountUnits),
@@ -36,9 +41,9 @@ function paymentRequirements(amountUnits, resourceUrl) {
     mimeType: "application/json",
     payTo: TREASURY,
     maxTimeoutSeconds: 600,
-    asset: PAY_ASSET.address,
-    extra: PAY_ASSET.eip712,
-  };
+    asset: asset.address,
+    extra: asset.eip712,
+  }));
 }
 
 async function facilitatorCall(path, paymentPayload, requirements) {
@@ -62,26 +67,32 @@ app.post("/realize-fee", async (req, res) => {
       return res.status(409).json({ error: "no accrued fees to settle" });
     }
     const resourceUrl = `${req.protocol}://${req.get("host")}/realize-fee`;
-    const requirements = paymentRequirements(usdcUnits, resourceUrl);
+    const accepts = paymentRequirements(usdcUnits, resourceUrl);
 
     const header = req.headers["x-payment"];
     if (!header) {
-      return res.status(402).json({ x402Version: 1, error: "X-PAYMENT header is required", accepts: [requirements] });
+      return res.status(402).json({ x402Version: 1, error: "X-PAYMENT header is required", accepts });
     }
     const paymentPayload = JSON.parse(Buffer.from(header, "base64").toString());
 
-    const verification = await facilitatorCall("/verify", paymentPayload, requirements);
-    if (!verification.isValid) {
-      return res
-        .status(402)
-        .json({ x402Version: 1, error: verification.invalidReason ?? "invalid payment", accepts: [requirements] });
+    // The v1 payload doesn't name its asset, so verify against each accepted
+    // requirement until one matches the signature.
+    let requirements = null;
+    let invalidReason = "invalid payment";
+    for (const candidate of accepts) {
+      const verification = await facilitatorCall("/verify", paymentPayload, candidate);
+      if (verification.isValid) { requirements = candidate; break; }
+      invalidReason = verification.invalidReason ?? invalidReason;
+    }
+    if (!requirements) {
+      return res.status(402).json({ x402Version: 1, error: invalidReason, accepts });
     }
 
     const settlement = await facilitatorCall("/settle", paymentPayload, requirements);
     if (!settlement.success) {
       return res
         .status(402)
-        .json({ x402Version: 1, error: settlement.errorReason ?? "settlement failed", accepts: [requirements] });
+        .json({ x402Version: 1, error: settlement.errorReason ?? "settlement failed", accepts });
     }
 
     // Payment settled on-chain -> release the vault's accrued fee to the paying agent,
