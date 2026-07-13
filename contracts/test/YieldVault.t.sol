@@ -137,6 +137,28 @@ contract YieldVaultTest is Test {
         assertApproxEqAbs(paid, 110e18, 2);
     }
 
+    /// Regression: after a full exit, withdrawal rounding can leave dust in the
+    /// vault while totalSupply is 0. The next deposit must mint 1:1 with value
+    /// (dust accrues to the depositor) instead of dividing by the dust and
+    /// inflating pricePerShare by orders of magnitude (seen live on mainnet).
+    function test_RedepositAfterFullExitWithDustMintsSaneShares() public {
+        uint256 aliceShares = _deposit(alice, address(usdt), 100e6);
+        vm.prank(alice);
+        vault.withdraw(aliceShares, address(usdt));
+        assertEq(vault.totalSupply(), 0);
+
+        usdt.mint(address(vault), 66); // simulate aToken rounding dust ($0.000066)
+        assertGt(vault.totalAssets(), 0);
+
+        uint256 bobShares = _deposit(bob, address(usdt), 900e6);
+        assertEq(bobShares, 900e18); // 1:1 with normalized value, not divided by dust
+        assertApproxEqRel(vault.pricePerShare(), 1e18, 1e12);
+
+        vm.prank(bob);
+        uint256 paid = vault.withdraw(bobShares, address(usdt));
+        assertApproxEqAbs(paid, 900e6 + 66, 2); // principal + the dust he absorbed
+    }
+
     function test_SecondDepositorDoesNotDiluteFirst() public {
         _deposit(alice, address(usdm), 100e18);
         aave.accrueYield(address(usdm), address(vault), 100e18); // pps doubles

@@ -1,7 +1,7 @@
 {
   "type": "https://eips.ethereum.org/EIPS/eip-8004#registration-v1",
   "name": "Restwise Yield Optimizer",
-  "description": "Non-custodial multi-stablecoin (USDT/USDC/USDm) vault keeper on Celo. Autonomously consolidates deposits into the best-paying venue across Aave v3 and Moola Market, converting between stables through Mento FPMM pools with hard min-received protection. Charges a 10% performance fee on realized yield only, settled via x402. Every decision is recorded on-chain in Rebalanced events with the APYs observed at decision time. Vault: 0x980F7e88742368A92d0Dab11cddD15Bb83cEbCF6 (Celo mainnet, verified).",
+  "description": "Non-custodial multi-stablecoin (USDT/USDC/USDm) vault keeper on Celo. Autonomously consolidates deposits into the best-paying venue across Aave v3 and Moola Market, converting between stables through Mento FPMM pools with hard min-received protection. Charges a 10% performance fee on realized yield only, settled via x402. Every decision is recorded on-chain in Rebalanced events with the APYs observed at decision time. Vault: 0xa4904a55a0DAC8e994ca21c7771DB678DbdBC248 (Celo mainnet, verified).",
   "image": "",
   "services": [
     { "name": "web", "endpoint": "https://github.com/Samuel1-ona/Restwise" }

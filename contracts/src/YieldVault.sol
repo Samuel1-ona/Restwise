@@ -186,13 +186,20 @@ contract YieldVault is ERC20, Ownable, Pausable, ReentrancyGuard {
         totalNormalized = grossAssets();
     }
 
-    /// @dev +1/+1 virtual offset blunts first-depositor share-price inflation.
+    /// @dev A vault with no shares mints 1:1 with deposited value, regardless of any
+    ///      residual dust it holds — the dust simply accrues to the first depositor.
+    ///      (The previous +1/+1 virtual offset let post-exit dust, e.g. aToken
+    ///      rounding remainders, inflate the share price by orders of magnitude.)
     function convertToShares(uint256 normAssets) public view returns (uint256) {
-        return normAssets * (totalSupply() + 1) / (totalAssets() + 1);
+        uint256 supply = totalSupply();
+        if (supply == 0) return normAssets;
+        uint256 assets = totalAssets();
+        return assets == 0 ? normAssets : normAssets * supply / assets;
     }
 
     function convertToAssets(uint256 shares_) public view returns (uint256) {
-        return shares_ * (totalAssets() + 1) / (totalSupply() + 1);
+        uint256 supply = totalSupply();
+        return supply == 0 ? shares_ : shares_ * totalAssets() / supply;
     }
 
     /// @notice Net price per share, 1e18-scaled.
