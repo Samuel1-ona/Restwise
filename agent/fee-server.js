@@ -47,9 +47,12 @@ function paymentRequirements(amountUnits, resourceUrl) {
 }
 
 async function facilitatorCall(path, paymentPayload, requirements) {
+  const headers = { "Content-Type": "application/json" };
+  // /settle requires an API key from x402.celo.org (connect wallet -> sign -> key).
+  if (process.env.X402_API_KEY) headers["X-API-Key"] = process.env.X402_API_KEY;
   const res = await fetch(`${FACILITATOR}${path}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers,
     body: JSON.stringify({ x402Version: 1, paymentPayload, paymentRequirements: requirements }),
   });
   if (!res.ok) throw new Error(`facilitator ${path} failed: HTTP ${res.status} ${await res.text()}`);
