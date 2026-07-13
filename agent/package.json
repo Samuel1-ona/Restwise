@@ -1,0 +1,18 @@
+{
+  "name": "restwise-agent",
+  "version": "0.1.0",
+  "description": "Restwise keeper: rebalances the YieldVault between Aave v3 and Moola on Celo, settles performance fees via x402",
+  "type": "module",
+  "scripts": {
+    "agent": "node rebalance-agent.js",
+    "agent:once": "RUN_ONCE=true node rebalance-agent.js",
+    "fee-server": "node fee-server.js",
+    "register": "node register-agent.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "ethers": "^6.13.0",
+    "express": "^4.19.0",
+    "thirdweb": "^5.68.0"
+  }
+}

@@ -1,0 +1,135 @@
+/* Restwise UI — dataviz reference palette (validated instance), roles as CSS custom props */
+:root {
+  --surface-1: #fcfcfb;
+  --page: #f9f9f7;
+  --text-primary: #0b0b0b;
+  --text-secondary: #52514e;
+  --muted: #898781;
+  --grid: #e1e0d9;
+  --baseline: #c3c2b7;
+  --border: rgba(11, 11, 11, 0.10);
+  --series-1: #2a78d6; /* Restwise (blue, slot 1) */
+  --series-2: #1baf7a; /* Aave·USDT (aqua, slot 2) */
+  --series-3: #eda100; /* Aave·USDC (yellow, slot 3) */
+  --series-4: #008300; /* Aave·USDm (green, slot 4) */
+  --series-5: #4a3aa7; /* Moola·USDm (violet, slot 5) */
+  --warn: #fab219;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --surface-1: #1a1a19;
+    --page: #0d0d0d;
+    --text-primary: #ffffff;
+    --text-secondary: #c3c2b7;
+    --muted: #898781;
+    --grid: #2c2c2a;
+    --baseline: #383835;
+    --border: rgba(255, 255, 255, 0.10);
+    --series-1: #3987e5;
+    --series-2: #199e70;
+    --series-3: #c98500;
+    --series-4: #008300;
+    --series-5: #9085e9;
+  }
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  background: var(--page);
+  color: var(--text-primary);
+  line-height: 1.5;
+}
+main { max-width: 960px; margin: 0 auto; padding: 16px; display: flex; flex-direction: column; gap: 16px; }
+
+.topbar {
+  display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  padding: 14px 20px; border-bottom: 1px solid var(--border);
+  background: var(--surface-1);
+}
+.brand { font-weight: 700; font-size: 18px; }
+.brand-mark { color: var(--series-1); }
+.brand-sub { font-weight: 400; font-size: 13px; color: var(--muted); margin-left: 8px; }
+
+.wallet-chip { display: flex; align-items: center; gap: 8px; }
+.addr { font-variant-numeric: tabular-nums; font-size: 14px; color: var(--text-secondary); }
+
+.modal-backdrop {
+  position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5);
+  display: flex; align-items: center; justify-content: center; z-index: 20;
+}
+.modal {
+  background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px;
+  padding: 22px 24px; width: min(360px, 90vw); display: flex; flex-direction: column; gap: 10px;
+}
+.modal h3 { margin: 0 0 6px; }
+.connector-btn { text-align: left; }
+.error { color: var(--series-1); font-size: 13px; }
+
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+.tile { background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+.tile-label { font-size: 12px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.04em; }
+.tile-value { font-size: 26px; font-weight: 650; margin-top: 2px; }
+
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 720px) { .grid { grid-template-columns: 1fr; } }
+
+.card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; }
+.card h2 { margin: 0 0 4px; font-size: 16px; }
+.muted { color: var(--muted); font-size: 13px; }
+
+.field-row { display: flex; gap: 8px; margin: 10px 0; }
+input[type="number"] {
+  flex: 1; padding: 10px 12px; border: 1px solid var(--baseline); border-radius: 8px;
+  background: var(--page); color: var(--text-primary); font-size: 15px;
+}
+.btn {
+  padding: 10px 16px; border-radius: 8px; border: 1px solid var(--baseline);
+  background: var(--surface-1); color: var(--text-primary); font-size: 14px; font-weight: 600; cursor: pointer;
+}
+.btn:disabled { opacity: 0.5; cursor: default; }
+.btn-primary { background: var(--series-1); border-color: var(--series-1); color: #fff; }
+.btn-ghost { border-color: transparent; color: var(--text-secondary); }
+.btn-warn { border-color: var(--warn); }
+.btn:hover:not(:disabled) { filter: brightness(1.05); }
+
+.dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; }
+
+/* stacked allocation bar: 2px surface gap between fills per mark spec */
+.alloc-bar { display: flex; height: 24px; border-radius: 6px; overflow: hidden; gap: 2px; background: var(--page); margin: 10px 0 4px; }
+.alloc-seg { height: 100%; border-radius: 4px; transition: width 0.4s ease; }
+
+.venue-table { margin-top: 8px; }
+.best-chip {
+  margin-left: 8px; padding: 1px 7px; border-radius: 999px; font-size: 11px; font-weight: 600;
+  background: var(--series-1); color: #fff;
+}
+.asset-select {
+  padding: 10px 8px; border: 1px solid var(--baseline); border-radius: 8px;
+  background: var(--page); color: var(--text-primary); font-size: 14px; font-weight: 600;
+}
+
+.chart-wrap { position: relative; width: 100%; margin-top: 10px; }
+.chart-wrap svg { display: block; width: 100%; height: auto; }
+.gridline { stroke: var(--grid); stroke-width: 1; }
+.axis-text { fill: var(--muted); }
+.crosshair { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 3, 3; }
+.chart-legend { display: flex; gap: 18px; font-size: 13px; color: var(--text-secondary); margin-top: 6px; }
+.swatch { display: inline-block; width: 12px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+.tooltip {
+  position: absolute; pointer-events: none; background: var(--surface-1); border: 1px solid var(--border);
+  border-radius: 8px; padding: 8px 10px; font-size: 12px; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+  white-space: nowrap; transform: translateX(-50%); z-index: 5;
+}
+.tooltip .row { display: flex; gap: 8px; justify-content: space-between; }
+.tooltip .num { font-variant-numeric: tabular-nums; font-weight: 600; }
+
+.table-scroll { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--grid); }
+th { color: var(--text-secondary); font-weight: 600; }
+td.num, th.num { font-variant-numeric: tabular-nums; }
+
+footer { text-align: center; padding: 24px; color: var(--muted); font-size: 13px; }
+code { background: var(--page); border: 1px solid var(--grid); border-radius: 4px; padding: 1px 5px; font-size: 12px; }

@@ -1,0 +1,11 @@
+{
+  "type": "https://eips.ethereum.org/EIPS/eip-8004#registration-v1",
+  "name": "Restwise Yield Optimizer",
+  "description": "Non-custodial multi-stablecoin (USDT/USDC/USDm) vault keeper on Celo. Autonomously consolidates deposits into the best-paying venue across Aave v3 and Moola Market, converting between stables through Mento FPMM pools with hard min-received protection. Charges a 10% performance fee on realized yield only, settled via x402. Every decision is recorded on-chain in Rebalanced events with the APYs observed at decision time.",
+  "image": "",
+  "services": [
+    { "name": "x402", "endpoint": "https://REPLACE-WITH-FEE-SERVER/realize-fee", "version": "1.0" },
+    { "name": "web", "endpoint": "https://REPLACE-WITH-FRONTEND-URL" }
+  ],
+  "supportedTrust": ["reputation"]
+}

@@ -1,0 +1,32 @@
+name: rebalance-agent
+
+on:
+  schedule:
+    - cron: "0 */6 * * *" # every 6 hours
+  workflow_dispatch: {}
+
+jobs:
+  rebalance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+        working-directory: agent
+      - run: npm run agent:once
+        working-directory: agent
+        env:
+          RPC_URL: https://forno.celo.org
+          CHAIN_ID: "42220"
+          VAULT_ADDRESS: ${{ vars.VAULT_ADDRESS }}
+          KEEPER_PRIVATE_KEY: ${{ secrets.KEEPER_PRIVATE_KEY }}
+          X402_FEE_ENDPOINT: ${{ vars.X402_FEE_ENDPOINT }}
+          THIRDWEB_CLIENT_ID: ${{ secrets.THIRDWEB_CLIENT_ID }}
+      - name: Upload decision log
+        uses: actions/upload-artifact@v4
+        with:
+          name: decisions-${{ github.run_id }}
+          path: agent/decisions.json
+          if-no-files-found: ignore

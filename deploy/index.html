@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Restwise — deploy with MetaMask</title>
+  <style>
+    :root {
+      --surface: #fcfcfb; --page: #f9f9f7; --ink: #0b0b0b; --ink2: #52514e;
+      --muted: #898781; --border: rgba(11,11,11,0.10); --baseline: #c3c2b7;
+      --accent: #2a78d6; --good: #006300; --bad: #d03b3b;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --surface: #1a1a19; --page: #0d0d0d; --ink: #fff; --ink2: #c3c2b7;
+        --border: rgba(255,255,255,0.10); --baseline: #383835;
+        --accent: #3987e5; --good: #0ca30c; --bad: #e66767;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      background: var(--page); color: var(--ink); line-height: 1.55;
+    }
+    main { max-width: 660px; margin: 0 auto; padding: 32px 16px; }
+    h1 { font-size: 22px; } h1 span { color: var(--accent); }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px 22px; margin: 16px 0; }
+    .muted { color: var(--muted); font-size: 13px; }
+    label { display: block; font-size: 13px; color: var(--ink2); margin: 12px 0 4px; }
+    input {
+      width: 100%; padding: 10px 12px; border: 1px solid var(--baseline); border-radius: 8px;
+      background: var(--page); color: var(--ink); font-size: 14px; font-family: ui-monospace, monospace;
+    }
+    button {
+      padding: 12px 18px; border-radius: 8px; border: none; background: var(--accent); color: #fff;
+      font-size: 15px; font-weight: 600; cursor: pointer; margin-top: 16px;
+    }
+    button:disabled { opacity: 0.5; cursor: default; }
+    ol.steps { padding-left: 0; list-style: none; margin: 8px 0 0; }
+    ol.steps li { padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
+    ol.steps li:last-child { border-bottom: none; }
+    .pending::before { content: "○ "; color: var(--muted); }
+    .busy::before { content: "◐ "; color: var(--accent); }
+    .done::before { content: "● "; color: var(--good); }
+    .fail::before { content: "✕ "; color: var(--bad); }
+    .addr { font-family: ui-monospace, monospace; font-size: 13px; word-break: break-all; }
+    .result { display: none; }
+    .result.show { display: block; }
+    a { color: var(--accent); }
+    code { background: var(--page); border: 1px solid var(--border); border-radius: 4px; padding: 1px 5px; font-size: 12px; }
+  </style>
+</head>
+<body>
+<main>
+  <h1><span>◍</span> Restwise — mainnet deployment</h1>
+  <p class="muted">
+    Deploys the multi-asset YieldVault to <strong>Celo mainnet (42220)</strong> using your
+    MetaMask wallet for signing. Four transactions: contract creation + three
+    <code>addAsset</code> registrations (USDT, USDC, USDm). Your connected account becomes
+    the vault <strong>owner</strong>. Nothing here reads or stores private keys.
+  </p>
+
+  <div class="card">
+    <div id="wallet" class="muted">Wallet: not connected</div>
+    <label>Keeper address (the rebalancing agent's wallet)</label>
+    <input id="keeper" placeholder="defaults to your connected address" />
+    <label>Fee collector address (the x402 settlement service's wallet)</label>
+    <input id="feeCollector" placeholder="defaults to your connected address" />
+    <button id="go">Connect MetaMask &amp; deploy</button>
+  </div>
+
+  <div class="card">
+    <ol class="steps">
+      <li id="s-connect" class="pending">Connect wallet &amp; switch to Celo</li>
+      <li id="s-deploy" class="pending">Deploy YieldVault (sign in MetaMask)</li>
+      <li id="s-usdt" class="pending">addAsset USDT → aUSDT</li>
+      <li id="s-usdc" class="pending">addAsset USDC → aUSDC</li>
+      <li id="s-usdm" class="pending">addAsset USDm → aUSDm + mcUSD (Moola)</li>
+    </ol>
+    <p id="status" class="muted"></p>
+  </div>
+
+  <div class="card result" id="result">
+    <strong>Vault deployed ✓</strong>
+    <p class="addr" id="vaultAddr"></p>
+    <p><a id="scanLink" target="_blank">View on Celoscan</a> · <a id="dashLink">Open dashboard with this vault</a></p>
+    <p class="muted">Next: put this address in <code>agent/.env</code> as <code>VAULT_ADDRESS</code>,
+      and ask Claude to run Celoscan verification and the live smoke test.</p>
+  </div>
+</main>
+
+<script type="module">
+  import { ethers } from "https://cdn.jsdelivr.net/npm/ethers@6.13.4/+esm";
+
+  // Celo mainnet addresses, verified on-chain (see contracts/script/Deploy.s.sol).
+  const A = {
+    aavePool: "0x3E59A31363E2ad014dcbc521c4a0d5757d9f3402",
+    moolaPool: "0x970b12522CA9b4054807a2c5B736149a5BE6f670",
+    mentoRouter: "0x4861840C2EfB2b98312B0aE34d86fD73E8f9B6f6",
+    fpmmFactory: "0xa849b475FE5a4B5C9C3280152c7a1945b907613b",
+    usdt: "0x48065fbBE25f71C9282ddf5e1cD6D6A887483D5e",
+    usdc: "0xcebA9300f2b948710d2653dD7B07f33A8B32118C",
+    usdm: "0x765DE816845861e75A25fCA122bb6898B8B1282a",
+    aUsdt: "0xDeE98402A302e4D707fB9bf2bac66fAEEc31e8Df",
+    aUsdc: "0xFF8309b9e99bfd2D4021bc71a362aBD93dBd4785",
+    aUsdm: "0xBba98352628B0B0c4b40583F593fFCb630935a45",
+    mcUsd: "0x918146359264C492BD6934071c6Bd31C854EDBc3",
+    zero: "0x0000000000000000000000000000000000000000",
+  };
+  const CELO_CHAIN = {
+    chainId: "0xa4ec", // 42220
+    chainName: "Celo",
+    nativeCurrency: { name: "CELO", symbol: "CELO", decimals: 18 },
+    rpcUrls: ["https://forno.celo.org"],
+    blockExplorerUrls: ["https://celoscan.io"],
+  };
+
+  const $ = (id) => document.getElementById(id);
+  const setStep = (id, cls) => { $(id).className = cls; };
+  const status = (msg) => { $("status").textContent = msg; };
+
+  async function ensureCelo(provider) {
+    try {
+      await provider.send("wallet_switchEthereumChain", [{ chainId: CELO_CHAIN.chainId }]);
+    } catch (err) {
+      if (err.error?.code === 4902 || err.code === 4902) {
+        await provider.send("wallet_addEthereumChain", [CELO_CHAIN]);
+      } else { throw err; }
+    }
+  }
+
+  async function run() {
+    $("go").disabled = true;
+    try {
+      if (!window.ethereum) throw new Error("MetaMask not found — install it or open this page in a browser with MetaMask.");
+
+      setStep("s-connect", "busy");
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      await provider.send("eth_requestAccounts", []);
+      await ensureCelo(provider);
+      const signer = await provider.getSigner();
+      const me = await signer.getAddress();
+      $("wallet").textContent = `Wallet: ${me} (Celo)`;
+      setStep("s-connect", "done");
+
+      const keeper = $("keeper").value.trim() || me;
+      const feeCollector = $("feeCollector").value.trim() || me;
+      if (!ethers.isAddress(keeper) || !ethers.isAddress(feeCollector)) {
+        throw new Error("keeper / fee collector must be valid addresses");
+      }
+
+      // Compiled artifact is fetched from the local Foundry build — always in sync
+      // with the audited source, no bytecode pasted into this page.
+      status("Loading compiled artifact from contracts/out …");
+      const artifact = await (await fetch("../contracts/out/YieldVault.sol/YieldVault.json")).json();
+
+      setStep("s-deploy", "busy");
+      status("Confirm the deployment transaction in MetaMask…");
+      const factory = new ethers.ContractFactory(artifact.abi, artifact.bytecode.object, signer);
+      const vault = await factory.deploy(
+        A.aavePool, A.moolaPool, A.mentoRouter, A.fpmmFactory, A.usdm, keeper, feeCollector
+      );
+      status("Waiting for deployment to confirm…");
+      await vault.waitForDeployment();
+      const vaultAddr = await vault.getAddress();
+      setStep("s-deploy", "done");
+
+      const assets = [
+        ["s-usdt", A.usdt, 6, A.aUsdt, A.zero],
+        ["s-usdc", A.usdc, 6, A.aUsdc, A.zero],
+        ["s-usdm", A.usdm, 18, A.aUsdm, A.mcUsd],
+      ];
+      for (const [step, token, dec, aTok, mTok] of assets) {
+        setStep(step, "busy");
+        status(`Confirm addAsset in MetaMask (${step.slice(2).toUpperCase()})…`);
+        const tx = await vault.addAsset(token, dec, aTok, mTok);
+        await tx.wait();
+        setStep(step, "done");
+      }
+
+      status("");
+      $("vaultAddr").textContent = vaultAddr;
+      $("scanLink").href = `https://celoscan.io/address/${vaultAddr}`;
+      $("dashLink").href = `http://localhost:5173/?vault=${vaultAddr}`;
+      $("result").classList.add("show");
+      localStorage.setItem("restwise.vault", vaultAddr);
+    } catch (err) {
+      console.error(err);
+      document.querySelectorAll(".busy").forEach((el) => (el.className = "fail"));
+      status(`Failed: ${err.shortMessage ?? err.message}`);
+      $("go").disabled = false;
+    }
+  }
+
+  $("go").onclick = run;
+</script>
+</body>
+</html>
