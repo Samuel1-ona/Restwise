@@ -170,16 +170,25 @@ export async function checkAndRebalance() {
     });
   }
 
-  if (acted) await realizeAndSettleFee();
+  await maybeSettleFees();
 }
 
-async function realizeAndSettleFee() {
-  const feeTx = await sendTagged(await vault.realizeFee.populateTransaction());
-  await feeTx.wait();
-  const accrued = await vault.accruedFees(); // normalized 18-dec USD
-  const feeUsd = Number(ethers.formatUnits(accrued, 18));
-  if (feeUsd < config.minFeeToSettle) {
-    return logDecision({ action: "fee-skip", reason: `accrued fee $${feeUsd} below settlement minimum` });
+/** Settle real fees via x402 whenever they clear the minimum — checked every
+ *  cycle, not only after a rebalance. realizeFee is called only when there is
+ *  unrealized yield above the high-water mark, so no transaction ever fires
+ *  without an actual fee behind it. */
+async function maybeSettleFees() {
+  const [accrued, hwm, pps, supply] = await Promise.all([
+    vault.accruedFees(), vault.highWaterMark(), vault.pricePerShare(), vault.totalSupply(),
+  ]);
+  let pending = 0n;
+  if (pps > hwm) pending = ((pps - hwm) * supply / 10n ** 18n) * 1_000n / 10_000n;
+  const feeUsd = Number(ethers.formatUnits(accrued + pending, 18));
+  if (feeUsd < config.minFeeToSettle) return; // nothing real to settle yet
+
+  if (pending > 0n) {
+    const feeTx = await sendTagged(await vault.realizeFee.populateTransaction());
+    await feeTx.wait();
   }
   if (!config.feeEndpoint) {
     return logDecision({
@@ -188,7 +197,7 @@ async function realizeAndSettleFee() {
     });
   }
   const result = await settleFeeViaX402(feeUsd);
-  logDecision({ action: "fee-settled", reason: `x402 payment settled for $${feeUsd}`, ...result });
+  logDecision({ action: "fee-settled", reason: `x402 payment settled for $${feeUsd.toFixed(6)}`, ...result });
 }
 
 async function main() {

@@ -2,6 +2,8 @@ export const VAULT_ABI = [
   "function currentAllocation() view returns (address[] assets, uint256[] idle, uint256[] inAave, uint256[] inMoola, uint256 totalNormalized)",
   "function totalAssets() view returns (uint256)",
   "function accruedFees() view returns (uint256)",
+  "function highWaterMark() view returns (uint256)",
+  "function totalSupply() view returns (uint256)",
   "function pricePerShare() view returns (uint256)",
   "function supportedAssets() view returns (address[])",
   "function rebalance(address fromAsset, bool fromMoola, address toAsset, bool toMoola, uint256 amount, uint256 minOut, uint256 fromApyBps, uint256 toApyBps)",
