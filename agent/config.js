@@ -42,9 +42,8 @@ export const config = {
   quoteSlackBps: Number(process.env.QUOTE_SLACK_BPS ?? 10), // minOut = live quote minus this
   intervalMs: Number(process.env.INTERVAL_MS ?? 6 * 60 * 60 * 1000), // 6h between checks
 
-  // x402 fee settlement
+  // x402 fee settlement (via the public Celo facilitator — no API keys needed)
   feeEndpoint: process.env.X402_FEE_ENDPOINT, // e.g. http://localhost:4021/realize-fee
-  thirdwebClientId: process.env.THIRDWEB_CLIENT_ID,
   minFeeToSettle: Number(process.env.MIN_FEE_TO_SETTLE ?? 0.01), // dollars
   feeClaimSymbol: process.env.FEE_CLAIM_SYMBOL ?? "USDm", // asset fees are released in
 

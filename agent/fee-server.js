@@ -1,76 +1,104 @@
-// Restwise x402 fee-settlement service.
+// Restwise x402 fee-settlement service — speaks x402 v1 directly against the
+// public Celo facilitator (api.x402.celo.org). No third-party SDK or API keys.
 //
 // POST /realize-fee is the vault's fee claim endpoint, gated by x402:
-//   1. Unpaid request -> HTTP 402 Payment Required with terms (amount = vault.accruedFees()).
-//   2. Agent retries with a signed X-PAYMENT authorization; the facilitator settles
-//      the stablecoin transfer to the treasury on Celo.
+//   1. Unpaid request -> HTTP 402 Payment Required with terms (amount = vault.accruedFees(),
+//      payable in USDC, the Celo stable with EIP-3009 transferWithAuthorization).
+//   2. Agent retries with a signed X-PAYMENT authorization; this server has the
+//      facilitator verify it, then settle the USDC transfer to the treasury on Celo.
 //   3. On settlement this server (holder of the vault's feeCollector key) calls
 //      vault.claimFee(agent) to release the accrued fee, reimbursing the agent.
 // Net effect: the 10% performance fee reaches the treasury as a countable x402 payment.
 import "dotenv/config";
 import express from "express";
 import { ethers } from "ethers";
-import { createThirdwebClient } from "thirdweb";
-import { celo, celoSepolia } from "thirdweb/chains";
-import { settlePayment, facilitator } from "thirdweb/x402";
 import { config, TOKENS } from "./config.js";
 import { VAULT_ABI } from "./abi.js";
 
 const PORT = Number(process.env.FEE_SERVER_PORT ?? 4021);
-const TREASURY = process.env.TREASURY_ADDRESS; // receives the x402 payment
-const SERVER_WALLET = process.env.THIRDWEB_SERVER_WALLET; // thirdweb facilitator wallet
+const FACILITATOR = process.env.X402_FACILITATOR ?? "https://api.x402.celo.org";
 
 const provider = new ethers.JsonRpcProvider(config.rpcUrl, config.chainId);
 const feeCollector = new ethers.Wallet(process.env.FEE_COLLECTOR_PRIVATE_KEY, provider);
 const vault = new ethers.Contract(config.vaultAddress, VAULT_ABI, feeCollector);
+const TREASURY = process.env.TREASURY_ADDRESS ?? feeCollector.address; // receives the x402 payment
 
-const client = createThirdwebClient({ secretKey: process.env.THIRDWEB_SECRET_KEY });
-const thirdwebFacilitator = facilitator({ client, serverWalletAddress: SERVER_WALLET });
-const network = config.chainId === 42220 ? celo : celoSepolia;
+// Payment asset must support EIP-3009 for the "exact" scheme; on Celo that is USDC.
+const PAY_ASSET = { address: TOKENS.USDC.address, decimals: 6, eip712: { name: "USDC", version: "2" } };
+
+function paymentRequirements(amountUnits, resourceUrl) {
+  return {
+    scheme: "exact",
+    network: "celo",
+    maxAmountRequired: String(amountUnits),
+    resource: resourceUrl,
+    description: "Restwise yield-optimizer performance fee settlement (10% of realized yield)",
+    mimeType: "application/json",
+    payTo: TREASURY,
+    maxTimeoutSeconds: 600,
+    asset: PAY_ASSET.address,
+    extra: PAY_ASSET.eip712,
+  };
+}
+
+async function facilitatorCall(path, paymentPayload, requirements) {
+  const res = await fetch(`${FACILITATOR}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ x402Version: 1, paymentPayload, paymentRequirements: requirements }),
+  });
+  if (!res.ok) throw new Error(`facilitator ${path} failed: HTTP ${res.status} ${await res.text()}`);
+  return res.json();
+}
 
 const app = express();
 
 app.post("/realize-fee", async (req, res) => {
   try {
     const accrued = await vault.accruedFees(); // normalized 18-dec USD units
-    if (accrued === 0n) {
+    // Round the fee up to whole USDC units (6 decimals) so the payment fully covers it.
+    const usdcUnits = (accrued + 10n ** 12n - 1n) / 10n ** 12n;
+    if (usdcUnits === 0n) {
       return res.status(409).json({ error: "no accrued fees to settle" });
     }
-    const price = `$${ethers.formatUnits(accrued, 18)}`;
+    const resourceUrl = `${req.protocol}://${req.get("host")}/realize-fee`;
+    const requirements = paymentRequirements(usdcUnits, resourceUrl);
 
-    const paymentData = req.headers["payment-signature"] || req.headers["x-payment"];
-    const result = await settlePayment({
-      resourceUrl: `${req.protocol}://${req.get("host")}/realize-fee`,
-      method: "POST",
-      paymentData,
-      payTo: TREASURY,
-      network,
-      price,
-      facilitator: thirdwebFacilitator,
-      routeConfig: {
-        description: "Restwise yield-optimizer performance fee settlement (10% of realized yield)",
-        mimeType: "application/json",
-      },
-    });
+    const header = req.headers["x-payment"];
+    if (!header) {
+      return res.status(402).json({ x402Version: 1, error: "X-PAYMENT header is required", accepts: [requirements] });
+    }
+    const paymentPayload = JSON.parse(Buffer.from(header, "base64").toString());
 
-    if (result.status !== 200) {
-      // First round-trip: respond 402 Payment Required with the signed terms.
-      return res.status(result.status).set(result.responseHeaders).json(result.responseBody);
+    const verification = await facilitatorCall("/verify", paymentPayload, requirements);
+    if (!verification.isValid) {
+      return res
+        .status(402)
+        .json({ x402Version: 1, error: verification.invalidReason ?? "invalid payment", accepts: [requirements] });
+    }
+
+    const settlement = await facilitatorCall("/settle", paymentPayload, requirements);
+    if (!settlement.success) {
+      return res
+        .status(402)
+        .json({ x402Version: 1, error: settlement.errorReason ?? "settlement failed", accepts: [requirements] });
     }
 
     // Payment settled on-chain -> release the vault's accrued fee to the paying agent,
     // in the configured claim asset (default USDm; the vault swaps via Mento if needed).
-    const payer = result.payer ?? req.headers["x-payer"] ?? feeCollector.address;
+    const payer = ethers.getAddress(paymentPayload.payload.authorization.from);
     const claimAsset = TOKENS[config.feeClaimSymbol].address;
     const tx = await vault.claimFee(payer, claimAsset);
     const receipt = await tx.wait();
-    res.json({ settled: true, amount: price, claimTx: receipt.hash });
+
+    res.setHeader("X-PAYMENT-RESPONSE", Buffer.from(JSON.stringify(settlement)).toString("base64"));
+    res.json({ settled: true, amount: `$${ethers.formatUnits(accrued, 18)}`, settleTx: settlement.transaction, claimTx: receipt.hash });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });
   }
 });
 
-app.get("/health", (_req, res) => res.json({ ok: true, vault: config.vaultAddress }));
+app.get("/health", (_req, res) => res.json({ ok: true, vault: config.vaultAddress, facilitator: FACILITATOR }));
 
-app.listen(PORT, () => console.log(`Restwise fee server (x402) listening on :${PORT}`));
+app.listen(PORT, () => console.log(`Restwise fee server (x402 via ${FACILITATOR}) listening on :${PORT}`));
