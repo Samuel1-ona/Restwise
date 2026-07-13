@@ -31,6 +31,10 @@ export const config = {
 
   keeperPrivateKey: process.env.KEEPER_PRIVATE_KEY,
 
+  // Celo Builders attribution tag (ERC-8021 calldata suffix) — leaderboards only
+  // credit transactions carrying this exact registered tag.
+  attributionTag: process.env.ATTRIBUTION_TAG ?? "celo_47b016b552bb",
+
   // Decision parameters (all tunable without code changes)
   minDeltaBps: Number(process.env.MIN_DELTA_BPS ?? 25), // ignore APY gaps under 0.25%
   rebalancePeriodDays: Number(process.env.REBALANCE_PERIOD_DAYS ?? 1), // expected holding period of the edge

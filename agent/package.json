@@ -10,6 +10,7 @@
     "register": "node register-agent.js"
   },
   "dependencies": {
+    "@celo/attribution-tags": "^0.3.0",
     "dotenv": "^16.4.5",
     "ethers": "^6.13.0",
     "express": "^4.19.0",

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { parseUnits } from "viem";
 import { useAccount, useWriteContract, usePublicClient, useReadContract } from "wagmi";
-import { TOKENS, SYMBOLS, VAULT_ADDRESS, VAULT_ABI, ERC20_ABI } from "../config/contracts";
+import { TOKENS, SYMBOLS, VAULT_ADDRESS, VAULT_ABI, ERC20_ABI, DATA_SUFFIX } from "../config/contracts";
 import { usePosition } from "../hooks/useVault";
 
 function AssetSelect({ value, onChange }) {
@@ -55,14 +55,14 @@ export default function DepositWithdraw({ vault }) {
         setStatus(`Approving ${depositAsset}…`);
         const hash = await writeContractAsync({
           address: depositToken.address, abi: ERC20_ABI, functionName: "approve",
-          args: [VAULT_ADDRESS, amount],
+          args: [VAULT_ADDRESS, amount], dataSuffix: DATA_SUFFIX,
         });
         await client.waitForTransactionReceipt({ hash });
       }
       setStatus("Depositing…");
       const hash = await writeContractAsync({
         address: VAULT_ADDRESS, abi: VAULT_ABI, functionName: "deposit",
-        args: [depositToken.address, amount],
+        args: [depositToken.address, amount], dataSuffix: DATA_SUFFIX,
       });
       await client.waitForTransactionReceipt({ hash });
     });
@@ -87,7 +87,7 @@ export default function DepositWithdraw({ vault }) {
       setStatus(`Withdrawing in ${withdrawAsset}…`);
       const hash = await writeContractAsync({
         address: VAULT_ADDRESS, abi: VAULT_ABI, functionName: "withdraw",
-        args: [burnShares, TOKENS[withdrawAsset].address],
+        args: [burnShares, TOKENS[withdrawAsset].address], dataSuffix: DATA_SUFFIX,
       });
       await client.waitForTransactionReceipt({ hash });
     });

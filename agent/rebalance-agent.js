@@ -8,6 +8,7 @@
 // Every evaluation — acted on or not — is written to decisions.json, and every
 // executed move also lands on-chain in the Rebalanced event with the APYs seen.
 import { ethers } from "ethers";
+import { toDataSuffix } from "@celo/attribution-tags";
 import fs from "node:fs";
 import { config, requireConfig, TOKENS, VENUES } from "./config.js";
 import {
@@ -36,6 +37,14 @@ function rayRateToApyBps(rate) {
 }
 
 const norm = (amount, decimals) => Number(ethers.formatUnits(amount, decimals));
+
+const DATA_SUFFIX = config.attributionTag ? toDataSuffix(config.attributionTag) : null;
+
+/** Send a populated tx with the attribution tag appended to its calldata. */
+async function sendTagged(txRequest) {
+  if (DATA_SUFFIX) txRequest.data += DATA_SUFFIX.slice(2);
+  return keeper.sendTransaction(txRequest);
+}
 
 /** APY of every venue, straight from on-chain reserve data. */
 async function getVenueApys() {
@@ -149,7 +158,7 @@ export async function checkAndRebalance() {
       continue;
     }
 
-    const tx = await vault.rebalance(...args);
+    const tx = await sendTagged(await vault.rebalance.populateTransaction(...args));
     const receipt = await tx.wait();
     acted = true;
     logDecision({
@@ -165,7 +174,7 @@ export async function checkAndRebalance() {
 }
 
 async function realizeAndSettleFee() {
-  const feeTx = await vault.realizeFee();
+  const feeTx = await sendTagged(await vault.realizeFee.populateTransaction());
   await feeTx.wait();
   const accrued = await vault.accruedFees(); // normalized 18-dec USD
   const feeUsd = Number(ethers.formatUnits(accrued, 18));

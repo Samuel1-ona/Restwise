@@ -1,4 +1,9 @@
 import { parseAbi } from "viem";
+import { toDataSuffix } from "@celo/attribution-tags";
+
+// Celo Builders attribution tag (ERC-8021): appended to every write so the
+// hackathon leaderboards credit this app's on-chain volume.
+export const DATA_SUFFIX = toDataSuffix("celo_47b016b552bb");
 
 // Celo mainnet addresses, verified on-chain 2026-07.
 export const TOKENS = {
