@@ -4,14 +4,13 @@ import { useMemo, useState } from "react";
 // time), four series max: Restwise (slot 1) vs the three Aave single-asset
 // baselines, which reuse their venue's fixed categorical color. Crosshair +
 // shared tooltip, legend + direct labels, data table fallback.
-const W = 640, H = 260, M = { top: 16, right: 96, bottom: 28, left: 44 };
+const W = 640, H = 260, M = { top: 16, right: 96, bottom: 28, left: 58 };
 const DAYS = 30;
 
 function useSeries(apys) {
   return useMemo(() => {
     const live = apys.venues.filter((v) => v.apyBps != null);
     if (live.length < 4) return null;
-    const css = getComputedStyle(document.documentElement);
     const bestBps = Math.max(...live.map((v) => v.apyBps));
     const aave = apys.venues.filter((v) => v.protocol === "aave");
     const defs = [
@@ -23,9 +22,10 @@ function useSeries(apys) {
         daily: v.apyBps / 10_000 / 365,
       })),
     ];
+    // var() references so the chart recolors live when the theme toggles.
     return defs.map((s) => ({
       ...s,
-      color: css.getPropertyValue(s.varName).trim(),
+      color: `var(${s.varName})`,
       points: Array.from({ length: DAYS + 1 }, (_, d) => 100 * (1 + s.daily) ** d),
     }));
   }, [apys.venues]);
@@ -94,9 +94,9 @@ export default function PerformanceChart({ apys }) {
             <g key={s.name}>
               <path
                 d={s.points.map((v, d) => `${d ? "L" : "M"}${xs(d)},${ys(v)}`).join("")}
-                fill="none" stroke={s.color} strokeWidth="2" strokeLinecap="round"
+                fill="none" stroke={s.color} strokeWidth="2.5" strokeLinecap="round"
               />
-              <text x={W - M.right + 8} y={labelY.get(i) + 4} fontSize="11" fill={s.color} fontWeight="600">
+              <text x={W - M.right + 8} y={labelY.get(i) + 4} fontSize="11" fill={s.color} fontWeight="700" className="series-label">
                 {s.name}
               </text>
             </g>

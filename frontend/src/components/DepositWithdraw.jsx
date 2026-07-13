@@ -100,18 +100,23 @@ export default function DepositWithdraw({ vault }) {
         <input type="number" min="0" step="any" placeholder="Amount"
           value={depositAmount} onChange={(e) => setDepositAmount(e.target.value)} />
         <AssetSelect value={depositAsset} onChange={setDepositAsset} />
-        <button className="btn btn-primary" disabled={busy} onClick={deposit}>Deposit</button>
+        <button className="btn btn-primary" disabled={busy} onClick={deposit}>
+          {busy ? <span className="spinner" /> : "Deposit"}
+        </button>
       </div>
+      <div className="divider" />
       <div className="field-row">
         <input type="number" min="0" step="any" placeholder="Amount (USD)"
           value={withdrawAmount} onChange={(e) => setWithdrawAmount(e.target.value)} />
         <AssetSelect value={withdrawAsset} onChange={setWithdrawAsset} />
         <button className="btn" disabled={busy} onClick={() => withdraw(false)}>Withdraw</button>
       </div>
-      <button className="btn btn-ghost" disabled={busy} onClick={() => withdraw(true)}>
+      <button className="btn btn-ghost btn-full" disabled={busy} onClick={() => withdraw(true)}>
         Withdraw everything as {withdrawAsset}
       </button>
-      {status && <p className="muted">{status}</p>}
+      {status && (
+        <p className={/fail|connect|enter|nothing/i.test(status) ? "status-error" : "muted"}>{status}</p>
+      )}
     </section>
   );
 }
