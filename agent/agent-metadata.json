@@ -4,7 +4,8 @@
   "description": "Non-custodial multi-stablecoin (USDT/USDC/USDm) vault keeper on Celo. Autonomously consolidates deposits into the best-paying venue across Aave v3 and Moola Market, converting between stables through Mento FPMM pools with hard min-received protection. Charges a 10% performance fee on realized yield only, settled via x402. Every decision is recorded on-chain in Rebalanced events with the APYs observed at decision time. Vault: 0xCa3e7FBb07f11f1b8C581Ca581F02a0CC27EDFB5 (Celo mainnet, verified).",
   "image": "",
   "services": [
-    { "name": "web", "endpoint": "https://github.com/Samuel1-ona/Restwise" }
+    { "name": "web", "endpoint": "https://restwise-sand.vercel.app" },
+    { "name": "repository", "endpoint": "https://github.com/Samuel1-ona/Restwise" }
   ],
   "supportedTrust": ["reputation"]
 }
