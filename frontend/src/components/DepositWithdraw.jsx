@@ -3,12 +3,37 @@ import { parseUnits } from "viem";
 import { useAccount, useWriteContract, usePublicClient, useReadContract } from "wagmi";
 import { TOKENS, SYMBOLS, VAULT_ADDRESS, VAULT_ABI, ERC20_ABI, DATA_SUFFIX } from "../config/contracts";
 import { usePosition } from "../hooks/useVault";
+import { useFeeCurrency, isFeeCurrencyRejection } from "../hooks/useFeeCurrency";
 
 function AssetSelect({ value, onChange }) {
   return (
     <select className="asset-select" value={value} onChange={(e) => onChange(e.target.value)}>
       {SYMBOLS.map((s) => <option key={s} value={s}>{s}</option>)}
     </select>
+  );
+}
+
+/**
+ * Lets the user pick what pays gas. Shown always, because the interesting case is the
+ * one where it says CELO: that is the wallet telling the user it cannot do better.
+ */
+function GasSelect({ fee, asset }) {
+  const active = fee.symbolFor(asset);
+  return (
+    <label className="gas-select muted">
+      Gas in{" "}
+      <select
+        className="asset-select"
+        value={fee.override ?? "auto"}
+        disabled={fee.latchedOff}
+        onChange={(e) => fee.setOverride(e.target.value === "auto" ? null : e.target.value)}
+      >
+        <option value="auto">auto ({active})</option>
+        <option value="CELO">CELO</option>
+        {SYMBOLS.map((s) => <option key={s} value={s}>{s}</option>)}
+      </select>
+      {fee.latchedOff && " — wallet rejected stablecoin gas, using CELO"}
+    </label>
   );
 }
 
@@ -24,6 +49,7 @@ export default function DepositWithdraw({ vault }) {
   const { writeContractAsync } = useWriteContract();
   const client = usePublicClient();
   const { shares, refetchShares } = usePosition();
+  const fee = useFeeCurrency();
 
   const depositToken = TOKENS[depositAsset];
   const { data: allowance, refetch: refetchAllowance } = useReadContract({
@@ -47,23 +73,42 @@ export default function DepositWithdraw({ vault }) {
     }
   }
 
+  /**
+   * Submits a write with gas paid in `asset` where the wallet supports it, falling back
+   * to CELO on the one class of failure that means "this wallet does not speak CIP-64".
+   * The retry is deliberately narrow: any other error is the user's to see, and blindly
+   * resubmitting a reverted transaction would ask them to sign a second doomed one.
+   */
+  async function send(params, asset) {
+    const feeCurrency = fee.addressFor(asset);
+    if (!feeCurrency) return writeContractAsync(params);
+    try {
+      return await writeContractAsync({ ...params, feeCurrency });
+    } catch (e) {
+      if (!isFeeCurrencyRejection(e)) throw e;
+      fee.disable();
+      setStatus("Wallet can't pay gas in stablecoins — retrying in CELO…");
+      return writeContractAsync(params);
+    }
+  }
+
   const deposit = () =>
     run("Deposited", async () => {
       const amount = parseUnits(depositAmount || "0", depositToken.decimals);
       if (amount === 0n) throw new Error("enter an amount");
       if ((allowance ?? 0n) < amount) {
         setStatus(`Approving ${depositAsset}…`);
-        const hash = await writeContractAsync({
+        const hash = await send({
           address: depositToken.address, abi: ERC20_ABI, functionName: "approve",
           args: [VAULT_ADDRESS, amount], dataSuffix: DATA_SUFFIX,
-        });
+        }, depositAsset);
         await client.waitForTransactionReceipt({ hash });
       }
       setStatus("Depositing…");
-      const hash = await writeContractAsync({
+      const hash = await send({
         address: VAULT_ADDRESS, abi: VAULT_ABI, functionName: "deposit",
         args: [depositToken.address, amount], dataSuffix: DATA_SUFFIX,
-      });
+      }, depositAsset);
       await client.waitForTransactionReceipt({ hash });
     });
 
@@ -85,10 +130,10 @@ export default function DepositWithdraw({ vault }) {
       }
       if (burnShares === 0n) throw new Error("nothing to withdraw");
       setStatus(`Withdrawing in ${withdrawAsset}…`);
-      const hash = await writeContractAsync({
+      const hash = await send({
         address: VAULT_ADDRESS, abi: VAULT_ABI, functionName: "withdraw",
         args: [burnShares, TOKENS[withdrawAsset].address], dataSuffix: DATA_SUFFIX,
-      });
+      }, withdrawAsset);
       await client.waitForTransactionReceipt({ hash });
     });
 
@@ -108,6 +153,7 @@ export default function DepositWithdraw({ vault }) {
           {busy ? <span className="spinner" /> : "Deposit"}
         </button>
       </div>
+      <GasSelect fee={fee} asset={depositAsset} />
       <div className="divider" />
       <div className="field-row">
         <input type="number" min="0" step="any" placeholder="Amount (USD)"

@@ -252,3 +252,14 @@ code {
   background: var(--bg); border: 1px solid var(--grid); border-radius: 4px;
   padding: 1px 6px; font-family: var(--font-mono); font-size: 12px;
 }
+
+/* Fee abstraction: gas-currency picker under the deposit row. Deliberately quiet —
+   it is a disclosure, not a decision most users need to make. */
+.gas-select {
+  display: block;
+  margin: 0.4rem 0 0;
+  font-size: 0.85em;
+}
+.gas-select .asset-select {
+  margin-left: 0.3rem;
+}

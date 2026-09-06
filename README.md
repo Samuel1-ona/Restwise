@@ -124,6 +124,34 @@ Wallets: injected (MiniPay auto-connects), MetaMask, WalletConnect (set
 - Stacked allocation bar in fixed per-venue colors
 - Agent decision log from `Rebalanced`/`FeeRealized`/`FeeClaimed` events
 - Growth-of-$100 chart: Restwise (best venue net of fee) vs three single-asset baselines
+- **Gas paid in the stablecoin you're depositing** (Celo fee abstraction, CIP-64)
+
+### Fee abstraction (CIP-64)
+
+A stablecoin vault that demands a *different* token for gas has an onboarding hole in it:
+someone holding only USDT cannot deposit until they go and find CELO first. So the deposit,
+approve and withdraw paths pay gas in the asset already being moved.
+
+Six-decimal tokens must be referenced by their **adapter** address, because Celo's gas maths
+is 18-decimal internally; 18-decimal tokens are passed directly. Verified on mainnet against
+`eth_gasPrice` — the adapters below return a price, the raw USDT token address is rejected:
+
+| Fee currency | Address used | |
+|---|---|---|
+| USDT | `0x0E2A3e05bc9A16F5292A6170456A710cb89C6f72` | adapter |
+| USDC | `0x2F25deB3848C207fc8E0c34035B3Ba7fC157602B` | adapter |
+| USDm | `0x765DE816845861e75A25fCA122bb6898B8B1282a` | token, 18dp |
+
+Measured overhead is **85,337 gas** on an `approve` (139,507 with a fee currency vs 54,170
+without) — roughly $0.0022 at the time of writing, and notably more than the ~50,000 quoted
+in Celo's own docs.
+
+CIP-64 is a Celo extension, and MetaMask and other generic EVM wallets reject it. Rather than
+break a flow that works today, `useFeeCurrency` defaults to stablecoin gas only for wallets
+known to speak it (MiniPay, Valora, Opera), leaves everyone else on CELO, exposes a selector
+either way, and latches back to CELO for the session if a wallet actually rejects the
+transaction — so nobody pays the failed-attempt cost twice. The retry matches a deliberately
+narrow set of error shapes; a revert is never silently resubmitted.
 
 ```bash
 cd frontend && npm install

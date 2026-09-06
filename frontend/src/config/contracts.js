@@ -13,6 +13,22 @@ export const TOKENS = {
 };
 export const SYMBOLS = Object.keys(TOKENS);
 
+// Celo fee abstraction (CIP-64): gas paid in an ERC-20 instead of CELO, so someone
+// holding only stablecoins can deposit without first acquiring CELO. That is the whole
+// onboarding barrier for a stablecoin vault, so the fee currency defaults to whatever
+// asset the user is already moving.
+//
+// Six-decimal tokens must be referenced by their ADAPTER address: Celo's gas maths is
+// 18-decimal internally and the adapter normalises. Eighteen-decimal tokens (USDm/cUSD)
+// are passed directly. Verified against eth_gasPrice on forno 2026-09-06 — each address
+// below returns a price, while the raw USDT token address is rejected with
+// "Missing or invalid parameters".
+export const FEE_CURRENCIES = {
+  USDT: "0x0E2A3e05bc9A16F5292A6170456A710cb89C6f72", // adapter (6dp)
+  USDC: "0x2F25deB3848C207fc8E0c34035B3Ba7fC157602B", // adapter (6dp)
+  USDm: TOKENS.USDm.address,                          // 18dp, used directly
+};
+
 // The four yield venues. Colors are fixed categorical slots (never cycled) shared
 // between the allocation view and the chart so a venue keeps its hue everywhere.
 export const VENUES = [
