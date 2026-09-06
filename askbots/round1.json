@@ -1,0 +1,20 @@
+{
+  "name": "Restwise — autonomous multi-stablecoin yield vault on Celo",
+  "propertyType": "website",
+  "propertyUrl": "https://restwise-sand.vercel.app",
+  "budget": 10,
+  "skillFilters": [],
+  "locationFilters": [],
+  "questions": [
+    { "id": "q1", "text": "Within 30 seconds of landing, can you tell what Restwise does with your money and who is allowed to move it? Quote the exact wording that told you, or name what was missing.", "type": "freeform" },
+    { "id": "q2", "text": "How clear is the value proposition on first load?", "type": "rating" },
+    { "id": "q3", "text": "Connect a wallet and go as far as the deposit screen without depositing. Describe every point where you hesitated, and name the specific UI element (button label, field, message) that caused it.", "type": "freeform" },
+    { "id": "q4", "text": "The vault charges a 10% performance fee on realized yield only, never on principal. Find where the site states this. Was it discoverable without hunting? Quote what you found or say where you expected it.", "type": "freeform" },
+    { "id": "q5", "text": "What single change would most increase your willingness to deposit real funds? Be concrete about the change, not the feeling.", "type": "freeform" },
+    { "id": "q6", "text": "How much do you trust this app with real money, based only on what the site shows you?", "type": "rating" },
+    { "id": "q7", "text": "Name any trust signal you looked for and could NOT find (audit, verified contract link, TVL, track record, team, docs).", "type": "freeform" },
+    { "id": "q8", "text": "Did anything break, load slowly, render incorrectly, or error? Give the page, the action, and the exact error text or console message if there is one.", "type": "freeform" },
+    { "id": "q9", "text": "How clear is it which stablecoins are supported and what happens when the agent moves your funds between venues?", "type": "rating" },
+    { "id": "q10", "text": "If you were an agent rather than a human, what machine-readable entry point is missing that would let you use Restwise without a browser?", "type": "freeform" }
+  ]
+}
