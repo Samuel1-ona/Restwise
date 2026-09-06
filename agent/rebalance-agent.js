@@ -196,8 +196,16 @@ async function maybeSettleFees() {
       reason: `fee $${feeUsd} accrued on-chain; X402_FEE_ENDPOINT not configured, will settle later`,
     });
   }
-  const result = await settleFeeViaX402(feeUsd);
-  logDecision({ action: "fee-settled", reason: `x402 payment settled for $${feeUsd.toFixed(6)}`, ...result });
+  // The fee is already crystallized on-chain (realizeFee above); the x402 leg is
+  // an external dependency. If the facilitator is unreachable or unfunded, hold
+  // the accrued fee and retry next cycle — never let a settlement failure crash
+  // the keeper (the startup cycle in main() is otherwise unguarded).
+  try {
+    const result = await settleFeeViaX402(feeUsd);
+    logDecision({ action: "fee-settled", reason: `x402 payment settled for $${feeUsd.toFixed(6)}`, ...result });
+  } catch (err) {
+    logDecision({ action: "fee-hold", reason: `fee $${feeUsd.toFixed(6)} accrued on-chain; x402 settle failed, will retry: ${err.message}` });
+  }
 }
 
 async function main() {
