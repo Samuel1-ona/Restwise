@@ -1,0 +1,125 @@
+{
+  "name": "Restwise",
+  "description": "Non-custodial multi-stablecoin yield vault on Celo. A keeper agent moves pooled deposits into the best-paying lending venue across Aave v3 and Moola Market, converting between stablecoins through Mento V3 FPMM pools when needed.",
+  "url": "https://restwise-sand.vercel.app/",
+  "repository": "https://github.com/Samuel1-ona/Restwise",
+  "agentIdentity": {
+    "standard": "ERC-8004",
+    "registry": "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
+    "agentId": 9674,
+    "explorer": "https://8004scan.io/agents/celo/9674"
+  },
+  "network": {
+    "name": "celo",
+    "chainId": 42220,
+    "rpc": "https://forno.celo.org",
+    "explorer": "https://celoscan.io"
+  },
+  "entryPoint": {
+    "kind": "evm-contract",
+    "note": "There is no proprietary HTTP API. The vault contract is the interface; call it over any Celo RPC.",
+    "address": "0xCa3e7FBb07f11f1b8C581Ca581F02a0CC27EDFB5",
+    "verifiedSource": "https://celoscan.io/address/0xCa3e7FBb07f11f1b8C581Ca581F02a0CC27EDFB5#code",
+    "abi": "https://restwise-sand.vercel.app/abi.json"
+  },
+  "assets": [
+    {
+      "symbol": "USDT",
+      "address": "0x48065fbBE25f71C9282ddf5e1cD6D6A887483D5e",
+      "decimals": 6,
+      "venues": [
+        "aave-v3"
+      ]
+    },
+    {
+      "symbol": "USDC",
+      "address": "0xcebA9300f2b948710d2653dD7B07f33A8B32118C",
+      "decimals": 6,
+      "venues": [
+        "aave-v3"
+      ]
+    },
+    {
+      "symbol": "USDm",
+      "address": "0x765DE816845861e75A25fCA122bb6898B8B1282a",
+      "decimals": 18,
+      "venues": [
+        "aave-v3",
+        "moola"
+      ]
+    }
+  ],
+  "actions": [
+    {
+      "name": "deposit",
+      "type": "write",
+      "signature": "deposit(address asset, uint256 amount)",
+      "note": "Requires a prior ERC-20 approve of the vault. Mints shares priced at pricePerShare()."
+    },
+    {
+      "name": "withdraw",
+      "type": "write",
+      "signature": "withdraw(uint256 shares, address asset)",
+      "note": "Burns shares and returns the chosen stablecoin; cross-stable exits route through Mento."
+    },
+    {
+      "name": "pricePerShare",
+      "type": "read",
+      "signature": "pricePerShare() view returns (uint256)"
+    },
+    {
+      "name": "totalAssets",
+      "type": "read",
+      "signature": "totalAssets() view returns (uint256)"
+    },
+    {
+      "name": "currentAllocation",
+      "type": "read",
+      "signature": "currentAllocation() view returns (address[],uint256[],uint256[],uint256[],uint256)"
+    },
+    {
+      "name": "supportedAssets",
+      "type": "read",
+      "signature": "supportedAssets() view returns (address[])"
+    }
+  ],
+  "fees": {
+    "model": "performance",
+    "rateBps": 1000,
+    "basis": "realized yield above a high-water mark",
+    "chargedOnPrincipal": false,
+    "note": "10% of realized yield only. No fee is charged on principal, and none on gains already charged.",
+    "settlement": "x402 (HTTP 402) \u2014 https://x402.celo.org"
+  },
+  "custody": {
+    "nonCustodial": true,
+    "userCanAlwaysWithdraw": true,
+    "agentPermissions": [
+      "rebalance"
+    ],
+    "agentCannot": [
+      "withdraw user funds",
+      "transfer to external addresses",
+      "touch principal"
+    ],
+    "slippageGuard": {
+      "defaultBps": 50,
+      "maxBps": 200,
+      "note": "Contract-enforced minimum-received floor on every swap; a compromised keeper cannot grief depositors with bad quotes."
+    }
+  },
+  "attribution": {
+    "standard": "ERC-8021",
+    "tag": "celo_47b016b552bb"
+  },
+  "security": {
+    "audited": false,
+    "note": "No third-party audit. Hackathon project on mainnet with real funds \u2014 source and tests are public; deposit only what you can afford to lose.",
+    "tests": "https://github.com/Samuel1-ona/Restwise/tree/main/contracts/test"
+  },
+  "privacy": {
+    "collectsPersonalData": false,
+    "accounts": false,
+    "note": "Static frontend, public RPC only. No Restwise server receives your data."
+  }
+}

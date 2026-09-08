@@ -263,3 +263,22 @@ code {
 .gas-select .asset-select {
   margin-left: 0.3rem;
 }
+
+/* Static pre-render shown in #root before React mounts, and to anything that never runs
+   JS at all (crawlers, link unfurlers, reviewer agents). React's createRoot() replaces
+   these nodes on mount, so this is the no-JS view of the protocol, not a second UI. */
+.prerender {
+  max-width: 44rem;
+  margin: 0 auto;
+  padding: 2rem 1.25rem 4rem;
+  line-height: 1.6;
+}
+.prerender h1 { font-size: 1.6rem; margin-bottom: 0.5rem; }
+.prerender h2 { font-size: 1.1rem; margin-top: 2rem; }
+.prerender table { border-collapse: collapse; margin: 0.5rem 0; }
+.prerender th, .prerender td {
+  border: 1px solid currentColor;
+  padding: 0.3rem 0.7rem;
+  text-align: left;
+}
+.prerender code { font-size: 0.9em; word-break: break-all; }

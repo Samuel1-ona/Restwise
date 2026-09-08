@@ -3,7 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Restwise — agentic yield on Celo</title>
+  <title>Restwise — agentic stablecoin yield on Celo</title>
+  <meta name="description" content="Non-custodial Celo vault for USDT, USDC and USDm. A keeper agent moves deposits to the best-paying lending venue; it can never withdraw to itself. 10% fee on realized yield only, never on principal." />
+  <link rel="canonical" href="https://restwise-sand.vercel.app/" />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Restwise — agentic stablecoin yield on Celo" />
+  <meta property="og:description" content="Non-custodial multi-stablecoin vault on Celo. The agent rebalances; it cannot withdraw your funds." />
+  <meta property="og:url" content="https://restwise-sand.vercel.app/" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Bagel+Fat+One&family=Fredoka:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -15,7 +21,89 @@
   </script>
 </head>
 <body>
-  <div id="root"></div>
+  <div id="root">
+    <main class="prerender">
+      <h1>Restwise — agentic stablecoin yield on Celo</h1>
+      <p>
+        Restwise is a <strong>non-custodial</strong> vault on Celo mainnet. You deposit
+        USDT, USDC or USDm; an autonomous keeper agent continuously moves the pooled
+        capital into whichever lending market is paying most, and you withdraw whenever
+        you like, in whichever of the three stablecoins you want.
+      </p>
+
+      <h2>Who is allowed to move your money</h2>
+      <p>
+        <strong>You are the only address that can withdraw your funds.</strong> The keeper
+        agent holds one permission and one only: it may call <code>rebalance()</code>, which
+        moves capital <em>between lending venues inside the vault</em>. It cannot withdraw to
+        itself, cannot transfer to any external address, and cannot touch your principal.
+        Every swap is bounded on-chain by a minimum-received floor (default 0.5%, capped at
+        2% by the vault owner), so even a fully compromised keeper cannot drain value through
+        deliberately bad quotes.
+      </p>
+
+      <h2>Fees</h2>
+      <p>
+        <strong>10% of realized yield only — never on principal.</strong> The fee is charged
+        against a high-water mark, so it applies to new profit and never to your deposit or
+        to gains already charged. If the vault does not earn, no fee is taken. Fees settle
+        over <a href="https://x402.celo.org">x402</a> as HTTP-402 payments.
+      </p>
+
+      <h2>Supported stablecoins, and what happens when the agent moves funds</h2>
+      <table>
+        <thead><tr><th>Asset</th><th>Venues it can be lent to</th></tr></thead>
+        <tbody>
+          <tr><td>USDT</td><td>Aave v3</td></tr>
+          <tr><td>USDC</td><td>Aave v3</td></tr>
+          <tr><td>USDm</td><td>Aave v3, Moola Market</td></tr>
+        </tbody>
+      </table>
+      <p>
+        Moola lists no USDT or USDC market, so moving between venues sometimes means
+        converting between stablecoins. Those conversions route through Mento V3 FPMM pools
+        at roughly 0.1% per hop, and the agent only acts when the expected yield gain
+        exceeds the full cost of gas plus swap. Every decision is written on-chain as a
+        <code>Rebalanced</code> event recording the APYs observed at decision time, so the
+        agent's reasoning is auditable rather than asserted.
+      </p>
+
+      <h2>Verify before you deposit</h2>
+      <ul>
+        <li><a href="https://celoscan.io/address/0xCa3e7FBb07f11f1b8C581Ca581F02a0CC27EDFB5#code">Vault contract, verified source on Celoscan</a> — <code>0xCa3e7FBb07f11f1b8C581Ca581F02a0CC27EDFB5</code></li>
+        <li><a href="https://celoscan.io/token/0x48065fbBE25f71C9282ddf5e1cD6D6A887483D5e">USDT</a>, <a href="https://celoscan.io/token/0xcebA9300f2b948710d2653dD7B07f33A8B32118C">USDC</a> and <a href="https://celoscan.io/token/0x765DE816845861e75A25fCA122bb6898B8B1282a">USDm</a> token contracts</li>
+        <li><a href="https://github.com/Samuel1-ona/Restwise">Full source on GitHub</a>, including the vault tests and the keeper agent</li>
+        <li><a href="https://8004scan.io/agents/celo/9674">The keeper's ERC-8004 on-chain identity</a> (agent #9674)</li>
+      </ul>
+      <p>
+        <strong>Restwise has not had a third-party security audit.</strong> It is a hackathon
+        project running on mainnet with real money, the contract is unaudited, and you should
+        treat it accordingly — deposit only what you are willing to lose. The source and the
+        tests are public precisely so you do not have to take that on trust.
+      </p>
+
+      <h2>For agents</h2>
+      <p>
+        Restwise has no proprietary backend: the vault contract <em>is</em> the API. A
+        machine-readable manifest describing the contract, its ABI, the supported assets, the
+        fee rule and the agent's permissions is served at
+        <a href="/agent.json">/agent.json</a> (also at
+        <a href="/.well-known/agent.json">/.well-known/agent.json</a>), with the ABI alone at
+        <a href="/abi.json">/abi.json</a>. Read state and submit deposits or withdrawals
+        directly against Celo mainnet RPC — no browser, key or account required.
+      </p>
+
+      <h2>Privacy</h2>
+      <p>
+        Restwise stores no accounts and collects no personal data. The frontend is static and
+        talks only to public Celo RPC endpoints; your address and balances are read from the
+        chain, and nothing is sent to a Restwise server, because there isn't one. Your wallet
+        address and transactions are public on Celo by the nature of the chain.
+      </p>
+
+      <p><small>Loading the live dashboard… if it does not appear, JavaScript is required for the interactive app; everything above describes the protocol itself.</small></p>
+    </main>
+  </div>
   <script type="module" src="/src/main.jsx"></script>
 </body>
 </html>

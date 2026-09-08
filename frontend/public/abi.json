@@ -1,0 +1,20 @@
+{
+  "contract": "0xCa3e7FBb07f11f1b8C581Ca581F02a0CC27EDFB5",
+  "chainId": 42220,
+  "format": "human-readable",
+  "abi": [
+    "function currentAllocation() view returns (address[] assets, uint256[] idle, uint256[] inAave, uint256[] inMoola, uint256 totalNormalized)",
+    "function totalAssets() view returns (uint256)",
+    "function accruedFees() view returns (uint256)",
+    "function highWaterMark() view returns (uint256)",
+    "function totalSupply() view returns (uint256)",
+    "function pricePerShare() view returns (uint256)",
+    "function supportedAssets() view returns (address[])",
+    "function rebalance(address fromAsset, bool fromMoola, address toAsset, bool toMoola, uint256 amount, uint256 minOut, uint256 fromApyBps, uint256 toApyBps)",
+    "function realizeFee() returns (uint256)",
+    "function claimFee(address to, address asset) returns (uint256)",
+    "event Rebalanced(address indexed fromAsset, bool fromMoola, address indexed toAsset, bool toMoola, uint256 amountIn, uint256 amountOut, uint256 fromApyBps, uint256 toApyBps)",
+    "event FeeRealized(uint256 grossYield, uint256 fee, uint256 newHighWaterMark)",
+    "event FeeClaimed(address indexed to, address indexed asset, uint256 amount)"
+  ]
+}
